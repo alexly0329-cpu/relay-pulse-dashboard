@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relay Pulse — Instrument Panel</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=IBM+Plex+Mono&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --relay-green: #3B6D11;
+            --relay-ivory: #FDFCF8;
+            --relay-red: #C53030;
+        }
+        body {
+            background-color: var(--relay-ivory);
+            font-family: 'Inter', sans-serif;
+            color: #1a1a1a;
+            overflow: hidden;
+        }
+        .mono { font-family: 'IBM Plex Mono', monospace; }
+        .kpi-card { border-top: 4px solid var(--relay-green); background: white; }
+        .alert-row-high { border-left: 4px solid var(--relay-red); }
+        .btn-active { background-color: var(--relay-green) !important; color: white !important; border-color: var(--relay-green) !important; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+        select {
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 0.5rem center;
+            background-size: 1em;
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col p-6">
+
+    <!-- HEADER -->
+    <header class="flex justify-between items-end mb-6 border-b border-gray-200 pb-4">
+        <div>
+            <h1 class="text-3xl font-bold tracking-tight text-gray-900">Relay Pulse — <span class="font-light italic text-gray-500">Instrument Panel</span></h1>
+            <p class="text-sm text-gray-500 mt-1 uppercase tracking-widest font-semibold">"The panel that measures health, not applause"</p>
+        </div>
+        <div class="text-right">
+            <p class="text-[10px] leading-tight text-gray-400 italic max-w-xs ml-auto">
+                Every KPI names a decision, an owner, and a speed. If a number can go up while the company gets worse, it is not on this panel.
+            </p>
+        </div>
+    </header>
+
+    <!-- TOP ROW: KPI TILES -->
+    <div class="grid grid-cols-3 gap-6 mb-8">
+        <!-- 1. SIGNAL-TO-ACTION -->
+        <div class="kpi-card p-5 shadow-sm">
+            <div class="flex justify-between items-start">
+                <span class="text-xs font-bold text-gray-400 uppercase tracking-tighter">Signal-to-Action Latency</span>
+                <div id="dot-latency" class="h-3 w-3 rounded-full bg-gray-200"></div>
+            </div>
+            <div class="flex items-baseline gap-2 mt-2">
+                <span id="val-latency" class="text-4xl font-bold tracking-tighter">14h</span>
+                <span class="text-gray-400 font-medium italic text-sm">median</span>
+            </div>
+            <div class="mt-4 border-t pt-2">
+                <div class="flex justify-between text-[11px] mb-1">
+                    <span class="text-gray-500 uppercase tracking-tighter">Acted within SLA</span>
+                    <span id="val-sla" class="font-bold">81%</span>
+                </div>
+                <div class="w-full bg-gray-100 h-1">
+                    <div id="bar-sla" class="bg-[#3B6D11] h-1" style="width: 81%"></div>
+                </div>
+            </div>
+            <p class="text-[10px] text-gray-500 mt-3 border-l-2 border-gray-200 pl-2">
+                Drives: escalate/expedite decisions · Owner: CDOO · Speed: real-time
+            </p>
+        </div>
+
+        <!-- 2. EMERGING ISSUE INDEX -->
+        <div class="kpi-card p-5 shadow-sm cursor-pointer hover:bg-gray-50" onclick="toggleBreakdown()">
+            <div class="flex justify-between items-start">
+                <span class="text-xs font-bold text-gray-400 uppercase tracking-tighter">Emerging-Issue Index</span>
+                <div id="dot-issue" class="h-3 w-3 rounded-full bg-[#C53030]"></div>
+            </div>
+            <div class="flex items-baseline gap-2 mt-2">
+                <span id="val-issue" class="text-4xl font-bold tracking-tighter">57</span>
+                <span class="text-gray-400 font-medium italic text-sm">score</span>
+            </div>
+            <div class="mt-4 flex gap-1 items-end h-8">
+                <div class="bg-gray-200 w-full h-1/4"></div>
+                <div class="bg-gray-200 w-full h-1/3"></div>
+                <div class="bg-gray-200 w-full h-1/2"></div>
+                <div class="bg-gray-200 w-full h-3/4"></div>
+                <div class="bg-[#C53030] w-full h-full"></div>
+            </div>
+            <p class="text-[10px] text-gray-500 mt-3 border-l-2 border-gray-200 pl-2">
+                Drives: response briefs to owner · Owner: Head of CX · Speed: daily
+            </p>
+        </div>
+
+        <!-- 3. FLYWHEEL ECONOMICS -->
+        <div class="kpi-card p-5 shadow-sm">
+            <div class="flex justify-between items-start">
+                <span class="text-xs font-bold text-gray-400 uppercase tracking-tighter">LTV:CAC Ratio</span>
+                <div id="dot-flywheel" class="h-3 w-3 rounded-full bg-orange-500"></div>
+            </div>
+            <div class="flex items-baseline gap-2 mt-2">
+                <span id="val-ltv" class="text-4xl font-bold tracking-tighter">2.81</span>
+                <span class="text-gray-400 font-medium italic text-sm">ratio</span>
+            </div>
+            <div class="mt-4 space-y-2">
+                <div class="flex items-center justify-between text-[10px] mono">
+                    <span class="text-gray-400">Blended CAC: $70</span>
+                    <span class="font-bold text-[#3B6D11]">Effective: $85</span>
+                </div>
+                <div class="w-full bg-gray-100 h-2 flex">
+                    <div class="bg-gray-300 h-full" style="width: 70%"></div>
+                    <div class="bg-orange-400 h-full" style="width: 15%"></div>
+                </div>
+            </div>
+            <p class="text-[10px] text-gray-500 mt-3 border-l-2 border-gray-200 pl-2">
+                Drives: channel spend rebalancing · Owner: CFO · Speed: monthly
+            </p>
+        </div>
+    </div>
+
+    <!-- MIDDLE: FILTER & ALERT FEED -->
+    <section class="flex-grow flex flex-col min-h-0 mb-6 bg-white border border-gray-200 shadow-sm">
+        <div class="px-4 py-3 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+            <div class="flex items-center gap-6">
+                <h2 class="text-[11px] font-bold uppercase tracking-widest text-gray-900">Live Alert Feed</h2>
+                
+                <!-- NEW: RESPONSIBLE OWNER FILTER -->
+                <div class="flex items-center gap-2 border-l pl-6 border-gray-300">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Responsible:</label>
+                    <select id="owner-select" onchange="applyFilters()" class="text-[10px] mono font-bold border-none bg-transparent focus:ring-0 text-[#3B6D11] cursor-pointer">
+                        <option value="all">ALL PARTIES</option>
+                        <option value="Merch Ops - R.Ito">MERCH OPS (R. ITO)</option>
+                        <option value="Community - P.Sharma team">COMMUNITY (P. SHARMA)</option>
+                        <option value="S5 Review - Legal+Founder Office">LEGAL/FOUNDER OFFICE</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="flex gap-2">
+                <button onclick="setPlaybook('all')" class="pb-filter text-[9px] px-3 py-1 border rounded mono uppercase btn-active">All</button>
+                <button onclick="setPlaybook('demand')" class="pb-filter text-[9px] px-3 py-1 border rounded bg-white mono uppercase">Demand</button>
+                <button onclick="setPlaybook('trust')" class="pb-filter text-[9px] px-3 py-1 border rounded bg-white mono uppercase">Trust</button>
+                <button onclick="setPlaybook('ethics')" class="pb-filter text-[9px] px-3 py-1 border rounded bg-white mono uppercase">Ethics</button>
+            </div>
+        </div>
+
+        <div class="flex-grow overflow-y-auto custom-scrollbar">
+            <table class="w-full text-left text-xs border-collapse">
+                <thead class="sticky top-0 bg-white text-gray-400 font-bold uppercase text-[9px] border-b shadow-sm">
+                    <tr>
+                        <th class="px-6 py-3">Timestamp</th>
+                        <th class="px-6 py-3">Playbook</th>
+                        <th class="px-6 py-3 text-center">Severity</th>
+                        <th class="px-6 py-3">Responsible Party</th>
+                        <th class="px-6 py-3">Status</th>
+                        <th class="px-6 py-3 text-right">Latency</th>
+                    </tr>
+                </thead>
+                <tbody id="alert-body" class="mono divide-y divide-gray-50">
+                    <!-- Data Injected Here -->
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- OWNER PERFORMANCE SNAPSHOT -->
+        <div id="owner-summary" class="hidden px-6 py-2 bg-[#3B6D11] text-white text-[10px] flex justify-between items-center font-bold">
+            <span id="summary-name">R. ITO PERFORMANCE SNAPSHOT</span>
+            <div class="flex gap-4">
+                <span>ACTIVE ALERTS: <span id="summary-count">0</span></span>
+                <span>AVG LATENCY: <span id="summary-latency">0h</span></span>
+            </div>
+        </div>
+    </section>
+
+    <!-- BOTTOM: DECEMBER REPLAY -->
+    <section class="bg-white p-5 border border-gray-200 shadow-sm">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xs font-bold uppercase tracking-widest text-gray-900">Revenue Protection Replay — Checkpoint Leggings</h2>
+            <div class="flex items-center gap-4">
+                <span id="rev-saved" class="text-xs font-bold text-[#3B6D11]">$11.08M Est. Saved</span>
+                <button onclick="togglePulse()" id="pulse-btn" class="text-[10px] px-4 py-1.5 border-2 border-[#3B6D11] text-[#3B6D11] font-bold rounded uppercase hover:bg-gray-50 transition-all">With Pulse</button>
+            </div>
+        </div>
+        <div class="h-[180px] w-full">
+            <canvas id="replayChart"></canvas>
+        </div>
+    </section>
+
+    <script>
+        // Data subset for demo
+        const alerts = [
+            {id: 'A0075', time: '2026-02-03 08:30', playbook: 'ethics', severity: 'high', owner: 'S5 Review - Legal+Founder Office', status: 'acted', lat: 26.0},
+            {id: 'A0074', time: '2026-02-27 18:00', playbook: 'trust', severity: 'medium', owner: 'Community - P.Sharma team', status: 'acted', lat: 3.5},
+            {id: 'A0072', time: '2026-02-26 18:30', playbook: 'demand', severity: 'medium', owner: 'Merch Ops - R.Ito', status: 'acknowledged', lat: 5.5},
+            {id: 'A0071', time: '2026-02-25 17:45', playbook: 'demand', severity: 'medium', owner: 'Merch Ops - R.Ito', status: 'acted', lat: 3.6},
+            {id: 'A0066', time: '2026-02-20 14:00', playbook: 'demand', severity: 'high', owner: 'Merch Ops - R.Ito', status: 'acknowledged', lat: 2.8},
+            {id: 'A0065', time: '2026-02-19 13:00', playbook: 'ethics', severity: 'low', owner: 'S5 Review - Legal+Founder Office', status: 'acted', lat: 5.3},
+            {id: 'A0062', time: '2026-02-10 09:00', playbook: 'trust', severity: 'medium', owner: 'Community - P.Sharma team', status: 'acted', lat: 7.7},
+            {id: 'A0057', time: '2026-02-03 11:00', playbook: 'demand', severity: 'high', owner: 'Merch Ops - R.Ito', status: 'acted', lat: 8.5},
+            {id: 'A0046', time: '2026-01-22 09:30', playbook: 'ethics', severity: 'high', owner: 'S5 Review - Legal+Founder Office', status: 'acted', lat: 13.0},
+            {id: 'A0036', time: '2026-01-07 17:30', playbook: 'demand', severity: 'high', owner: 'Merch Ops - R.Ito', status: 'acted', lat: 15.9}
+        ];
+
+        let currentPlaybook = 'all';
+        let pulseOn = true;
+        let chart;
+
+        function applyFilters() {
+            const ownerFilter = document.getElementById('owner-select').value;
+            const tbody = document.getElementById('alert-body');
+            tbody.innerHTML = '';
+
+            const filtered = alerts.filter(a => {
+                const pbMatch = currentPlaybook === 'all' || a.playbook === currentPlaybook;
+                const ownerMatch = ownerFilter === 'all' || a.owner === ownerFilter;
+                return pbMatch && ownerMatch;
+            });
+
+            filtered.forEach(a => {
+                const isUrgent = a.severity === 'high' && a.status !== 'acted';
+                const row = document.createElement('tr');
+                row.className = `border-b border-gray-50 ${isUrgent ? 'alert-row-high bg-red-50/30' : ''}`;
+                row.innerHTML = `
+                    <td class="px-6 py-3 text-gray-400 font-light">${a.time}</td>
+                    <td class="px-6 py-3"><span class="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${getPbColor(a.playbook)}">${a.playbook}</span></td>
+                    <td class="px-6 py-3 text-center uppercase font-bold text-gray-600">${a.severity}</td>
+                    <td class="px-6 py-3 font-semibold text-gray-700">${a.owner}</td>
+                    <td class="px-6 py-3 capitalize text-gray-500 italic">${a.status.replace(/_/g, ' ')}</td>
+                    <td class="px-6 py-3 text-right font-bold ${a.lat > 24 ? 'text-red-600' : 'text-gray-900'}">${isUrgent ? '⏱ ' : ''}${a.lat}h</td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            updateSummary(ownerFilter, filtered);
+        }
+
+        function updateSummary(owner, filtered) {
+            const summary = document.getElementById('owner-summary');
+            if (owner === 'all') {
+                summary.classList.add('hidden');
+                return;
+            }
+            summary.classList.remove('hidden');
+            document.getElementById('summary-name').innerText = `${owner.split(' - ')[1] || owner} Performance Snapshot`;
+            document.getElementById('summary-count').innerText = filtered.length;
+            const avgLat = filtered.reduce((acc, curr) => acc + curr.lat, 0) / filtered.length;
+            document.getElementById('summary-latency').innerText = `${avgLat.toFixed(1)}h`;
+        }
+
+        function getPbColor(pb) {
+            if (pb === 'demand') return 'bg-blue-100 text-blue-700';
+            if (pb === 'trust') return 'bg-purple-100 text-purple-700';
+            return 'bg-orange-100 text-orange-700';
+        }
+
+        function setPlaybook(pb) {
+            currentPlaybook = pb;
+            document.querySelectorAll('.pb-filter').forEach(b => b.classList.remove('btn-active'));
+            event.target.classList.add('btn-active');
+            applyFilters();
+        }
+
+        function initChart() {
+            const ctx = document.getElementById('replayChart').getContext('2d');
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array.from({length: 40}, (_, i) => i),
+                    datasets: [{
+                        label: 'With Pulse',
+                        data: [25, 27, 30, 32, 35, 40, 60, 95, 98, 100, 98, 97, 95, 96, 95, 94, 95, 95, 96, 96, 95, 95, 94, 95, 96, 98, 100],
+                        borderColor: '#3B6D11',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        fill: false
+                    }, {
+                        label: 'Without Pulse',
+                        data: [25, 27, 30, 32, 35, 40, 60, 95, 98, 100, 80, 50, 20, 15, 12, 12, 12, 12, 12, 15, 20, 30, 45, 60, 80, 95, 98],
+                        borderColor: '#E2E8F0',
+                        borderDash: [5, 5],
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        fill: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { x: { display: false }, y: { display: true, grid: { display: false } } }
+                }
+            });
+        }
+
+        function togglePulse() {
+            pulseOn = !pulseOn;
+            const btn = document.getElementById('pulse-btn');
+            btn.innerText = pulseOn ? "With Pulse" : "Without Pulse";
+            chart.data.datasets[0].hidden = !pulseOn;
+            document.getElementById('rev-saved').innerText = pulseOn ? "$11.08M Est. Saved" : "$0 protected";
+            chart.update();
+        }
+
+        window.onload = () => {
+            applyFilters();
+            initChart();
+        };
+    </script>
+</body>
+</html>
